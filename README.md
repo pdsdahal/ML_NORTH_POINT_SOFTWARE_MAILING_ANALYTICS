@@ -143,5 +143,42 @@ Stratified Splitting
 <img src="files/cumulativeGainRandomForest.png" alt="Cumulative Gain Random Forest" width="400" height="500"/>
 
 - Hence, Random Forest is much better at identifying and ranking the buyers, and it helps to save on wasted marketing spending.
+## K-Mean Clustering Evaluation
+| Metric                          | k=2        | k=3        |
+|---------------------------------|------------|------------|
+| **Overall Mean Silhouette**      | 0.13166    | 0.15853    |
+|                                 |            |            |
+| **Cluster Distribution**         |            |            |
+| Cluster 1 Size                   | 846 (42.3%)| 1029 (51%) |
+| Cluster 2 Size                   | 1154 (57.7%)| 671 (34%) |
+| Cluster 3 Size                   | -          | 300 (15%)  |
+|                                 |            |            |
+| **Cluster Quality (Silhouette Width)** |        |            |
+| Segment 1 Quality                | 0.135      | 0.0672     |
+| Segment 2 Quality                | 0.128      | 0.2002     |
+| Segment 3 Quality                | -          | 0.3783     |
+|                                 |            |            |
+| **Statistical Distribution**     |            |            |
+| Minimum                          | -0.03933   | -0.07097   |
+| 1st Quartile                     | 0.06705    | 0.05689    |
+| Median                           | 0.13334    | 0.11082    |
+| 3rd Quartile                     | 0.1871     | 0.22289    |
+| Maximum                          | 0.29655    | 0.51432    |
+
+- k = 3 reflects three clear customer segments. Cluster 1 represents a large dormant/low-value majority, Cluster 2 represents a high-engagement middle group with growth potential,
+  and Cluster 3 represents the top-value VIP segment.
+
+# Recommendations
+## Campaign Implementation
+- Deploy the Random Forest models to select the top 200,000 customers most likely to purchase from the pooled list, ensuring higher campaign efficiency and return on investment.
+- Implement tiered marketing strategies based on the 3-cluster segmentation:
+  - **Premium Segment (15%)** – Cluster 3 is high-value, frequent buyers. Focus on retention and special offers.
+  - **Medium Segment (34%)** – Cluster 2 is moderate-value, active customers who could become top customers with more engagement.
+  - **Base Segment (51%)** – Cluster 1 is low-value, inactive customers who would need to be reactivated.
+
+## Allocation of Resources
+- Spend more on the premium customers (Cluster 3) who are buying.
+- Spend less to save money on customers (Cluster 1) who are less likely to make a purchase.
+
 
 
