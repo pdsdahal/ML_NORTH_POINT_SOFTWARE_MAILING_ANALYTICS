@@ -137,4 +137,11 @@ Stratified Splitting
 | Logistic Regression | Test   | 0.795   | 0.875      | 0.715      | 0.754     | 0.81     |
 | Random Forest       | Test   | 0.8075  | 0.875      | 0.74       | 0.771     | 0.82     |
 
-![Alt text](files/cumulativeGainRandomForest.png)
+
+- Overall, Random Forest is the better model for the business goal of selecting customers most likely to make a purchase.
+  
+<img src="files/cumulativeGainRandomForest.png" alt="Cumulative Gain Random Forest" width="400" height="500"/>
+
+- Hence, Random Forest is much better at identifying and ranking the buyers, and it helps to save on wasted marketing spending.
+
+
