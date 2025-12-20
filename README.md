@@ -144,6 +144,10 @@ Stratified Splitting
 
 - Hence, Random Forest is much better at identifying and ranking the buyers, and it helps to save on wasted marketing spending.
 ## K-Mean Clustering Evaluation
+
+### Cluster Profiles and Sizes for K-Means (k = 3)
+<img src="files/ClusterProfiles.png" alt="Cluster Profiles" width="400" height="500"/>
+
 | Metric                          | k=2        | k=3        |
 |---------------------------------|------------|------------|
 | **Overall Mean Silhouette**      | 0.13166    | 0.15853    |
@@ -179,6 +183,3 @@ Stratified Splitting
 ## Allocation of Resources
 - Spend more on the premium customers (Cluster 3) who are buying.
 - Spend less to save money on customers (Cluster 1) who are less likely to make a purchase.
-
-
-
