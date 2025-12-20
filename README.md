@@ -78,7 +78,8 @@ North-Point has the challenge of determining which customers from the pooled con
 
 **Spending**
 - High values in Spending indicate high-value customers, which are an important target group in their own right for driving revenue.
-### Conclusion  
+
+**Conclusion**  
 If these cases are eliminated, there is a risk of eliminating customers who are most important for targeting and predictive modeling. By retaining outliers, we allow predictive modeling and analysis to focus on the subscribers who are most likely to develop response rates and revenue.
 
 ## Outcome Variables
@@ -97,5 +98,43 @@ If these cases are eliminated, there is a risk of eliminating customers who are 
 
 **Correction**
 - These records were updated to reflect Purchase = 0 changes to 1.
+
+
+## Feature Selection
+- Most Important Predictors
+  - Freq: (Accuracy, Gini | 100.14, 281.61)
+  - source_category: (Accuracy, Gini | 65.21, 168.33)
+  - last_update_days_ago: (Accuracy, Gini | 36.82, 124.57)
+- Moderately Important Predictors
+  - Address_is_res: (Accuracy, Gini | 26.04, 17.58)
+  - Web.order: (Accuracy, Gini | 20.79, 37.22)
+- Negligible or Negative Predictors
+  - US: (Accuracy, Gini | 6.92, 9.002)
+  - Gender.male: (Accuracy, Gini | -2.62, 10.18)
+  - Do not contribute meaningfully to prediction, and it may introduce noise if included.
+
+## Data Transformation 
+ - Scaling Numerical Variables (KMeans)
+ - One Hot Encoding for Categorical Variables
+
+## Data Partitioning
+Stratified Splitting
+| Training Set | Validation Set | Test Set |
+|----------|----------|----------|
+| 60%  | 20%  | 20%  |
+
+## Algorithm Selection
+- Classification
+    - Logistic Regression
+    - Random Forest
+- Clustering 
+    - K-means Clustering with initial k
+    - K-means Clustering with best k
+
+## Classification Models Evaluation
+| Model               | Dataset | Accuracy | Sensitivity | Specificity | Precision | F1-score |
+|--------------------|--------|---------|------------|------------|-----------|----------|
+| Logistic Regression | Test   | 0.795   | 0.875      | 0.715      | 0.754     | 0.81     |
+| Random Forest       | Test   | 0.8075  | 0.875      | 0.74       | 0.771     | 0.82     |
 
 
