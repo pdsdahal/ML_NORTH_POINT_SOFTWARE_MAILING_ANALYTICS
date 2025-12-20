@@ -137,4 +137,4 @@ Stratified Splitting
 | Logistic Regression | Test   | 0.795   | 0.875      | 0.715      | 0.754     | 0.81     |
 | Random Forest       | Test   | 0.8075  | 0.875      | 0.74       | 0.771     | 0.82     |
 
-
+![Alt text](files/cumulativeGainRandomForest.png)
