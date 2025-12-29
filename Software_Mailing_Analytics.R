@@ -139,3 +139,170 @@ outliers_df <- data.frame(
   row.names = NULL
 )
 print(outliers_df)
+
+# Predictor Analysis and Relevancy
+# Correlation Analysis for Numeric Predictors
+numeric_data <- software_mailing_list_data[, c("Freq", "last_update_days_ago", "X1st_update_days_ago", "Spending")]
+
+# Calculate correlation matrix
+cor_matrix <- cor(numeric_data, use = "complete.obs")
+cor_matrix
+
+options(repr.plot.width = 16, repr.plot.height = 14)  
+par(mfrow = c(1, 1), mar = c(2, 2, 2, 2))
+
+# Increase text size
+corrplot(cor_matrix,
+         method = "color",
+         type = "upper",
+         tl.cex = 1.0,        # larger variable names
+         tl.col = "black",
+         addCoef.col = "black",
+         number.cex = 1.2,    # larger correlation numbers
+         col = colorRampPalette(c("blue", "white", "red"))(200))
+
+#Predictor Relevancy
+#Frequency Variable Relevance Analysis Using Logistic Regression 
+software_mailing_list_data_Relevancy <- software_mailing_list_data
+software_mailing_list_data_Relevancy$Freq_scaled <- scale(software_mailing_list_data_Relevancy$Freq)
+model_scaled <- glm(Purchase ~ Freq_scaled, 
+                    data = software_mailing_list_data_Relevancy, 
+                    family = binomial)
+summary(model_scaled)
+
+############## categorical Relevency
+
+# Chi-squared tests for source variables
+source_cols <- c("source_a", "source_b", "source_c", "source_d", "source_e", 
+                 "source_m", "source_o", "source_h", "source_r", "source_s", 
+                 "source_t", "source_u", "source_p", "source_x", "source_w")
+
+results_chi_cat <- lapply(source_cols, function(col) {
+  test <- chisq.test(software_mailing_list_data[[col]], 
+                     software_mailing_list_data$Purchase)
+  
+  data.frame(Source = col,
+             Chi_Sq = as.numeric(test$statistic),
+             df = test$parameter,
+             P_Value = test$p.value)
+})
+
+# Combine into one data frame
+results_chi_cat <- do.call(rbind, results_chi_cat)
+
+# Reset row names to simple numbers
+rownames(results_chi_cat) <- NULL
+
+# Sort by p-value
+results_chi_cat <- results_chi_cat[order(results_chi_cat$P_Value), ]
+
+# Print results
+print("Chi-squared Test Results for Source Variables")
+print(results_chi_cat)
+
+# Chi-squared test for Web.order and Purchase
+web_chi <- chisq.test(software_mailing_list_data$Web.order, software_mailing_list_data$Purchase)
+print("Chi-squared test for Web.order and Purchase:")
+print(web_chi)
+
+# Chi-squared test for us and Purchase
+chisq.test(software_mailing_list_data$US, software_mailing_list_data$Purchase)
+
+# Chi-squared test for Gender.male and Purchase
+chisq.test(software_mailing_list_data$Gender.male, software_mailing_list_data$Purchase)
+
+# Chi-squared test for Address_is_res and Purchase
+chisq.test(software_mailing_list_data$Address_is_res, software_mailing_list_data$Purchase)
+
+################ 5.1 Dimension Reduction Analysis
+
+#feature engineering (proffessor fedback)
+software_mailing_with_active <- software_mailing_list_data
+software_mailing_with_active$active_sources <- rowSums(software_mailing_with_active[, source_cols])
+
+#  distribution of active_sources
+table(software_mailing_with_active$active_sources)
+
+# Subset the 0-source records from the new dataframe
+no_source_records <- software_mailing_with_active[software_mailing_with_active$active_sources == 0, ]
+
+# Check purchase distribution
+table(no_source_records$Purchase)
+
+# Now create the new variable for source_category
+software_mailing_list_data$source_category <- apply(
+  software_mailing_list_data[source_cols], 1, function(row) {
+    active <- names(row)[row == 1]        
+    if (length(active) == 0) {
+      return("none")                     
+    } else {
+      return(sub("source_", "", active))  
+    }
+  }
+)
+# Convert to factor
+software_mailing_list_data$source_category <- factor(software_mailing_list_data$source_category)
+
+# Verify result
+table(software_mailing_list_data$source_category)
+
+#Detect Data Quality Issue
+# Find records where Purchase = 0 and Spending = 1
+original_count <- sum(software_mailing_list_data$Purchase == 0 & software_mailing_list_data$Spending == 1)
+original_count
+
+# Will change the Purchase variable from 0 to 1 for records where:
+#Current Purchase = 0 (no purchase)
+#Spending = 1 (but they spent $1)
+software_mailing_list_data$Purchase[software_mailing_list_data$Purchase == 0 & software_mailing_list_data$Spending == 1] <- 1
+
+# Verify
+new_count <- sum(software_mailing_list_data$Purchase == 0 & software_mailing_list_data$Spending == 1)
+new_count
+#View(software_mailing_list_data)
+#need to make copy 
+software_data_classification <- software_mailing_list_data
+
+# removed all the sources variables only keept source_category 
+software_data_classification <- software_data_classification[, c("US","Freq","last_update_days_ago","X1st_update_days_ago",
+                                                                 "Web.order","Gender.male","Address_is_res","Purchase",
+                                                                 "Spending","source_category")]
+##########Feature Importance from Random Forest
+remove_vars <- c("sequence_number", "X1st_update_days_ago", "Spending")
+software_rf_feature_imp <- software_data_classification
+software_rf_feature_imp <- software_rf_feature_imp[, !(names(software_rf_feature_imp) %in% remove_vars)]
+software_rf_feature_imp$Purchase <- as.factor(software_rf_feature_imp$Purchase)
+software_rf_feature_imp$Address_is_res <- as.factor(software_rf_feature_imp$Address_is_res)
+software_rf_feature_imp$Web.order      <- as.factor(software_rf_feature_imp$Web.order)
+software_rf_feature_imp$US             <- as.factor(software_rf_feature_imp$US)
+
+#str(software_rf_feature_imp)
+library(randomForest)
+# Train Random Forest model
+set.seed(2025)
+rf_model <- randomForest(Purchase ~ ., 
+                         data = software_rf_feature_imp, 
+                         importance = TRUE)
+rf_importance <- randomForest::importance(rf_model)
+# Convert to data frame
+rf_importance_df <- data.frame(
+  Variable = rownames(rf_importance),
+  MeanDecreaseAccuracy = rf_importance[, "MeanDecreaseAccuracy"],
+  MeanDecreaseGini     = rf_importance[, "MeanDecreaseGini"]
+)
+# Sort by MeanDecreaseAccuracy
+rf_importance_df <- rf_importance_df[order(rf_importance_df$MeanDecreaseAccuracy, decreasing = TRUE), ]
+rownames(rf_importance_df) <- NULL
+print(rf_importance_df)
+
+#View(software_data_classification)
+# now final selected features for classifications 
+#US
+# Selected predictors based on correlation & Feature Importance from Random Forest
+selected_features_classification <- c("Freq","source_category","last_update_days_ago",
+                                      "Address_is_res","Web.order","Purchase")
+
+#  predictors & target variable for classification
+software_data_classification <- software_data_classification[, selected_features_classification]
+#View(software_data_classification)
+#str(software_data_classification)
