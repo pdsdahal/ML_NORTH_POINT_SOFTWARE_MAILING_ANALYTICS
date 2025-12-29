@@ -393,3 +393,137 @@ X_test_cat  <- factorize_predictors(test_data[, !names(test_data) %in% "Purchase
 y_train_cat <- factor(train_data$Purchase, levels = c(0, 1))
 y_val_cat   <- factor(val_data$Purchase, levels = c(0, 1))
 y_test_cat  <- factor(test_data$Purchase, levels = c(0, 1))
+
+##################################### Logistic Regression
+X_train_cat_lr <- X_train_cat
+X_val_cat_lr   <- X_val_cat
+X_test_cat_lr  <- X_test_cat
+library(glmnet)
+library(pROC)
+
+# Fit default Logistic Regression model
+lr_model_default <- glm(Purchase ~ ., 
+                        data = cbind(X_train_cat_lr, Purchase = y_train_cat),
+                        family = binomial)
+# Check convergence and print summary
+cat("Logistic Regression Default Model Summary:\n")
+summary(lr_model_default)
+
+# Evaluation function
+evaluate_lr <- function(model, X, y, threshold = 0.5) {
+  pred_prob <- predict(model, newdata = X, type = "response")
+  pred_class <- ifelse(pred_prob > threshold, 1, 0)
+  cm <- confusionMatrix(factor(pred_class), factor(y), positive = "1")
+  roc_obj <- roc(y, pred_prob, quiet = TRUE)
+  
+  metrics <- list(
+    Accuracy = cm$overall["Accuracy"],
+    Sensitivity = cm$byClass["Sensitivity"],
+    Specificity = cm$byClass["Specificity"],
+    Precision = cm$byClass["Precision"],
+    F1 = cm$byClass["F1"]
+  )
+  return(metrics)
+}
+
+# Evaluate default model
+lr_val_metrics <- evaluate_lr(lr_model_default, X_val_cat_lr, y_val_cat)
+cat("Logistic Regression Default Validation Metrics:\n")
+print(sapply(lr_val_metrics, round, 3)) 
+
+lr_test_metrics <- evaluate_lr(lr_model_default, X_test_cat_lr, y_test_cat)
+cat("Logistic Regression Default Test Metrics:\n")
+print(sapply(lr_test_metrics, round, 3))
+
+##################################### Tune Logistic Regression
+library(MASS)
+library(caret) 
+# Stepwise selection (both directions) on training data
+lr_model_step <- stepAIC(lr_model_default, direction = "both", trace = FALSE)
+cat("Logistic Regression Stepwise Model Summary:\n")
+summary(lr_model_step)
+
+#retained_vars <- names(coef(lr_model_step))
+#retained_vars
+thresholds <- seq(0.4, 0.6, by = 0.01)
+
+# Evaluate metrics for each threshold
+results_list <- lapply(thresholds, function(t) {
+  evaluate_lr(lr_model_step, X_val_cat_lr, y_val_cat, threshold = t)
+})
+
+# Convert list to data.frame
+results <- do.call(rbind, results_list)
+results <- data.frame(Threshold = thresholds, results)
+
+# Now find best threshold for F1
+best_f1_idx <- which.max(results$F1)
+best_threshold <- results$Threshold[best_f1_idx]
+cat("Best threshold (F1-optimal) on validation set:", best_threshold, "\n")
+
+##################### Evaluate Final Model
+# Validation set metrics with tuned threshold
+#lr_val_metrics_tuned <- evaluate_lr(lr_model_step, X_val_cat_lr, y_val_cat, threshold = best_threshold)
+#cat("Validation Metrics (Stepwise Model + Tuned Threshold):\n")
+#print(sapply(lr_val_metrics_tuned, round, 3))
+
+# Test set metrics with tuned threshold
+lr_test_metrics_tuned <- evaluate_lr(lr_model_step, X_test_cat_lr, y_test_cat, threshold = best_threshold)
+cat("Test Metrics (Stepwise Model + Tuned Threshold):\n")
+print(sapply(lr_test_metrics_tuned, round, 3))
+
+# Gain analysis function
+gain_analysis <- function(pred_prob, actual, model_name) {
+  # Create ranking data
+  gain_data <- data.frame(
+    prob = pred_prob,
+    actual = as.numeric(as.character(actual))
+  ) %>%
+    arrange(desc(prob)) %>%
+    mutate(
+      rank = row_number(),
+      total_customers = n(),
+      mailed_pct = rank / total_customers,
+      
+      # Cumulative metrics
+      cum_customers_mailed = rank,
+      cum_buyers_caught = cumsum(actual),
+      cum_response_rate = cum_buyers_caught / cum_customers_mailed,
+      
+      # Percentage metrics
+      pct_customers_mailed = mailed_pct * 100,
+      pct_buyers_caught = cum_buyers_caught / sum(actual) * 100,
+      
+      # Lift metrics
+      random_performance = mailed_pct,
+      lift = pct_buyers_caught / (pct_customers_mailed * 100)  # Convert back to proportion
+    )
+  
+  return(gain_data)
+}
+
+# call gain function to logistic regression
+lr_gain_data <- gain_analysis(
+  pred_prob = predict(lr_model_step, newdata = X_test_cat_lr, type = "response"),
+  actual = y_test_cat,
+  model_name = "Logistic Regression"
+)
+
+# Gain Chart using for logistic regression
+gain_chart_lr <- ggplot(lr_gain_data, aes(x = pct_customers_mailed, y = pct_buyers_caught)) +
+  geom_line(size = 1.2, color = "blue") +  # Logistic Regression model
+  geom_line(aes(y = pct_customers_mailed), color = "red", linetype = "dashed", size = 1) +  # Random line
+  labs(
+    title = "Cumulative Gains Chart - Logistic Regression",
+    x = "% of Customers Mailed",
+    y = "% of Buyers Captured"
+  ) +
+  scale_x_continuous(labels = scales::percent_format(scale = 1), limits = c(0, 100)) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1), limits = c(0, 100)) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+print(gain_chart_lr)
