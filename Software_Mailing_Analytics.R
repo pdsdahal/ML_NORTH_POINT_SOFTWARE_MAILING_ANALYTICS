@@ -95,3 +95,47 @@ for (col in categorical_cols_except_sources) {
           ylim = c(0, max(counts) * 1.1),
           ylab = "Count")
 }
+##Data Preprocessing###############################
+# checking missing value
+missing_summary <- colSums(is.na(software_mailing_list_data))
+data.frame(Missing_Count = missing_summary, 
+           Missing_Percent = paste0(round((missing_summary / nrow(software_mailing_list_data)) * 100, 2), "%"))
+
+# Check for empty strings
+sum(software_mailing_list_data == "", na.rm = TRUE)
+
+# checking zeros entire data set except categorical variables 
+numeric_cols <- c("Freq", "last_update_days_ago", "X1st_update_days_ago", "Spending")
+zeros_summary <- colSums(software_mailing_list_data[numeric_cols] == 0, na.rm = TRUE)
+# summary with percent
+zeros_df <- data.frame(
+  Column = names(zeros_summary),
+  Zero_Count = zeros_summary,
+  Zero_Percent = paste0(round((zeros_summary / nrow(software_mailing_list_data)) * 100, 2), "%")
+)
+zeros_df
+
+#  duplicates check 
+sum(duplicated(software_mailing_list_data$sequence_number))
+######################## Outliers Detection
+numeric_cols <- c("Freq", "last_update_days_ago", "X1st_update_days_ago", "Spending")
+# Function to calculate outlier count using IQR
+find_outliers <- function(x) {
+  q1 <- quantile(x, 0.25, na.rm = TRUE)
+  q3 <- quantile(x, 0.75, na.rm = TRUE)
+  iqr <- q3 - q1
+  sum(x < (q1 - 1.5*iqr) | x > (q3 + 1.5*iqr), na.rm = TRUE)
+}
+# apply function to all numeric columns
+outlier_counts <- sapply(software_mailing_list_data[numeric_cols], find_outliers)
+
+# create summary table without duplicating column names
+outliers_df <- data.frame(
+  Variable = names(outlier_counts),
+  Outlier_Count = as.numeric(outlier_counts),
+  Min_Value = round(sapply(software_mailing_list_data[numeric_cols], function(x) min(x, na.rm = TRUE)), 2),
+  Max_Value = round(sapply(software_mailing_list_data[numeric_cols], function(x) max(x, na.rm = TRUE)), 2),
+  Percentage = paste0(round(as.numeric(outlier_counts) / nrow(software_mailing_list_data) * 100, 2), "%"),
+  row.names = NULL
+)
+print(outliers_df)
