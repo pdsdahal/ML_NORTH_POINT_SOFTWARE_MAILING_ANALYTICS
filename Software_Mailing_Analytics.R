@@ -306,3 +306,90 @@ selected_features_classification <- c("Freq","source_category","last_update_days
 software_data_classification <- software_data_classification[, selected_features_classification]
 #View(software_data_classification)
 #str(software_data_classification)
+
+# #############Data Partition 
+strata_factor <- interaction(
+  software_data_classification$Purchase,
+  drop = TRUE
+)
+# perform a stratified 60/20/20 split
+set.seed(2025)
+splits <- partition(
+  y = strata_factor, 
+  p = c(train = 0.6, val = 0.2, test = 0.2),
+  type = "stratified"
+)
+
+# Extract partitions
+train_data <- software_data_classification[splits$train, ]
+val_data   <- software_data_classification[splits$val, ]
+test_data  <- software_data_classification[splits$test, ]
+
+###################### let create summary
+# Partition sizes
+train_n <- nrow(train_data)
+val_n   <- nrow(val_data)
+test_n  <- nrow(test_data)
+
+# Total records
+total_n <- nrow(software_data_classification)
+
+# Create summary table
+partition_summary <- data.frame(
+  Partition   = c("Training", "Validation", "Test"),
+  Records     = c(train_n, val_n, test_n),
+  Percentage  = round(c(train_n, val_n, test_n) / total_n * 100, 2)
+)
+
+print(partition_summary)
+
+# partiton distribution for categorical predictors
+categorical_vars <- c("Purchase","Web.order","Address_is_res")
+partition_distribution_summary <- data.frame()
+
+for (var in categorical_vars) {
+  train_tab <- prop.table(table(train_data[[var]])) * 100
+  val_tab   <- prop.table(table(val_data[[var]])) * 100
+  test_tab  <- prop.table(table(test_data[[var]])) * 100
+  
+  for (lev in names(train_tab)) {
+    temp_df <- data.frame(
+      VariableName  = var,
+      Level         = lev,
+      Train_Percent = round(train_tab[lev],2),
+      Val_Percent   = round(val_tab[lev],2),
+      Test_Percent  = round(test_tab[lev],2)
+    )
+    partition_distribution_summary <- rbind(partition_distribution_summary, temp_df)
+  }
+}
+
+print(partition_distribution_summary)
+
+# Check overlap between splits
+length(intersect(splits$train, splits$test))
+length(intersect(splits$train, splits$val)) 
+length(intersect(splits$val, splits$test))
+
+# Check coverage
+length(unique(c(splits$train, splits$val, splits$test))) == nrow(software_data_classification)
+
+# Decided to use Logistic Regression, Random Forest, K-means Clustering
+# predictors & target variable for classification
+
+#  factors common method
+factorize_predictors <- function(df) {
+  df$Address_is_res <- as.factor(df$Address_is_res)
+  df$Web.order      <- as.factor(df$Web.order)
+  return(df)
+}
+
+# Apply function
+X_train_cat <- factorize_predictors(train_data[, !names(train_data) %in% "Purchase"])
+X_val_cat   <- factorize_predictors(val_data[, !names(val_data) %in% "Purchase"])
+X_test_cat  <- factorize_predictors(test_data[, !names(test_data) %in% "Purchase"])
+
+# Targets as factors (with explicit levels for consistency)
+y_train_cat <- factor(train_data$Purchase, levels = c(0, 1))
+y_val_cat   <- factor(val_data$Purchase, levels = c(0, 1))
+y_test_cat  <- factor(test_data$Purchase, levels = c(0, 1))
