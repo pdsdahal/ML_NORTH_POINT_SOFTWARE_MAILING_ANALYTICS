@@ -678,3 +678,104 @@ gain_chart_rf <- ggplot(rf_gain_data, aes(x = pct_customers_mailed, y = pct_buye
   )
 
 print(gain_chart_rf)
+
+##################################### K-means Clustering
+library(dplyr)
+library(cluster)
+library(factoextra)
+
+# behavioral variables
+behavioral_vars <- c("Spending", "Freq", "last_update_days_ago", "X1st_update_days_ago", "source_category")
+behavior_data <- software_mailing_list_data[, behavioral_vars]
+
+# One-hot encode only 'source_category'
+source_category_dummies <- model.matrix(~ source_category - 1, data = behavior_data)
+
+# Combine numeric variables with encoded categorical variable
+numeric_vars_1 <- behavior_data[, c("Spending", "Freq", "last_update_days_ago", 
+                                    "X1st_update_days_ago")]
+
+behavior_data_final <- cbind(numeric_vars_1, source_category_dummies)
+
+scaled_data <- scale(behavior_data_final)
+# initial k means with k = 2
+set.seed(2025)
+kmeans_initial <- kmeans(scaled_data, centers = 2, nstart = 25)
+# center, size, and members of each cluster. 
+print(kmeans_initial$centers)   
+print(kmeans_initial$size)      
+print(head(kmeans_initial$cluster, 10))  
+
+# Transpose the cluster centers to plot features on x-axis
+matplot(t(kmeans_initial$centers), type = "l", lty = 1, col = 1:2,
+        main = "Cluster Profiles (k = 2)",
+        xlab = "Features",
+        ylab = "Scaled Value",
+        xaxt = "n")  # suppress default x-axis labels
+
+# Add feature names as x-axis labels
+axis(1, at = 1:ncol(kmeans_initial$centers), labels = colnames(kmeans_initial$centers))
+
+# Add legend
+legend("topright", legend = paste("Cluster", 1:2), col = 1:2, lty = 1, bty = "n")
+
+# Compute silhouette values
+sil <- silhouette(kmeans_initial$cluster, dist(scaled_data))
+
+# Plot silhouette visualization
+plot(sil,
+     main = "Silhouette Plot for K-Means (k = 2)",
+     col = 1:2,
+     border = NA)
+
+
+# are silhouette values for each cluster and overall average silhouette
+summary(sil)
+
+# Elbow 
+set.seed(2025)
+fviz_nbclust(scaled_data, kmeans, method = "wss") +
+  ggtitle("Determining Optimal Number of Clusters") +
+  theme_minimal()
+
+#kmeans for best k = 3 based on elbow
+set.seed(2025)
+kmeans_optimal <- kmeans(scaled_data, centers = 3, nstart = 25)
+# Print cluster centers, sizes, and first 10 cluster memberships
+print(kmeans_optimal$centers)   
+print(kmeans_optimal$size)      
+print(head(kmeans_optimal$cluster, 10))  
+
+# Compute silhouette values for k = 3
+sil_opt_k <- silhouette(kmeans_optimal$cluster, dist(scaled_data))
+
+# Plot silhouette visualization
+plot(sil_opt_k,
+     main = "Silhouette Plot for K-Means (k = 3)",
+     col = 1:3,
+     border = NA)
+
+# Print silhouette values for each cluster and overall average
+summary(sil_opt_k)
+
+###################################Observation
+#  k means with k = 4
+set.seed(2025)
+kmeans_additional_4 <- kmeans(scaled_data, centers = 4, nstart = 25)
+
+# center, size, and members of each cluster. 
+print(kmeans_additional_4$centers)   
+print(kmeans_additional_4$size)      
+print(head(kmeans_additional_4$cluster, 10))  
+
+# Compute silhouette values
+silAdditional_4 <- silhouette(kmeans_additional_4$cluster, dist(scaled_data))
+
+# Plot silhouette visualization
+plot(silAdditional_4,
+     main = "Silhouette Plot for K-Means (k = 4)",
+     col = 1:4,
+     border = NA)
+
+# are silhouette values for each cluster and overall average silhouette
+summary(silAdditional_4)
